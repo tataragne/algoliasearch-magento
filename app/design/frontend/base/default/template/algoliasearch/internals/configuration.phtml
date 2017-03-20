@@ -193,6 +193,7 @@ $autocompleteApiKey = $algoliaHelper->generateSearchSecuredApiKey($config->getSe
 $algoliaJsConfig = array(
     'instant' => array(
         'enabled' => $config->isInstantEnabled(),
+        'infiniteScrollEnabled' => $config->isInfiniteScrollEnabled(),
         'apiKey' => $instantsearchApiKey,
         'selector' => $config->getInstantSelector(),
         'isAddToCartEnabled' => $config->isAddToCartEnable(),
@@ -271,6 +272,7 @@ $algoliaJsConfig = array(
         'categories' => $this->__('Categories'),
         'products' => $this->__('Products'),
         'searchBy' => $this->__('Search by'),
+        'showMore' => $this->__('Show more products'),
     ),
 );
 

@@ -159,27 +159,44 @@ document.addEventListener("DOMContentLoaded", function (event) {
 		 * This widget renders all products into result page
 		 * Docs: https://community.algolia.com/instantsearch.js/documentation/#hits
 		 **/
-		search.addWidget(
-			algoliaBundle.instantsearch.widgets.hits({
-				container: '#instant-search-results-container',
-				templates: {
-					allItems: $('#instant-hit-template').html()
-				},
-				transformData: {
-					allItems: function (results) {
-						for (var i = 0; i < results.hits.length; i++) {
-							results.hits[i] = transformHit(results.hits[i], algoliaConfig.priceKey);
-							results.hits[i].isAddToCartEnabled = algoliaConfig.instant.isAddToCartEnabled;
-							
-							results.hits[i].algoliaConfig = window.algoliaConfig;
-						}
-						
-						return results;
+		if (algoliaConfig.instant.infiniteScrollEnabled === true) {
+			search.addWidget(
+				algoliaBundle.instantsearch.widgets.infiniteHits({
+					container: '#instant-search-results-container',
+					templates: {
+						empty: algoliaConfig.translations.noResults,
+						item: $('#instant-hit-template').html()
+					},
+					hitsPerPage: algoliaConfig.hitsPerPage,
+					showMoreLabel: algoliaConfig.translations.showMore,
+					cssClasses : {
+						root: 'clearfix'
 					}
-				},
-				hitsPerPage: algoliaConfig.hitsPerPage
-			})
-		);
+				})
+			);
+		} else {
+			search.addWidget(
+				algoliaBundle.instantsearch.widgets.hits({
+					container: '#instant-search-results-container',
+					templates: {
+						allItems: '{{#hits}}' + $('#instant-hit-template').html() + '{{/hits}}'
+					},
+					transformData: {
+						allItems: function (results) {
+							for (var i = 0; i < results.hits.length; i++) {
+								results.hits[i] = transformHit(results.hits[i], algoliaConfig.priceKey);
+								results.hits[i].isAddToCartEnabled = algoliaConfig.instant.isAddToCartEnabled;
+
+								results.hits[i].algoliaConfig = window.algoliaConfig;
+							}
+
+							return results;
+						}
+					},
+					hitsPerPage: algoliaConfig.hitsPerPage
+				})
+			);
+		}
 		
 		/**
 		 * Custom widget - Suggestions
@@ -402,19 +419,21 @@ document.addEventListener("DOMContentLoaded", function (event) {
 		 * Pagination
 		 * Docs: https://community.algolia.com/instantsearch.js/documentation/#pagination
 		 **/
-		search.addWidget(
-			algoliaBundle.instantsearch.widgets.pagination({
-				container: '#instant-search-pagination-container',
-				cssClass: 'algolia-pagination',
-				showFirstLast: false,
-				maxPages: 1000,
-				labels: {
-					previous: algoliaConfig.translations.previousPage,
-					next: algoliaConfig.translations.nextPage
-				},
-				scrollTo: 'body'
-			})
-		);
+		if (algoliaConfig.instant.infiniteScrollEnabled === false) {
+			search.addWidget(
+				algoliaBundle.instantsearch.widgets.pagination({
+					container: '#instant-search-pagination-container',
+					cssClass: 'algolia-pagination',
+					showFirstLast: false,
+					maxPages: 1000,
+					labels: {
+						previous: algoliaConfig.translations.previousPage,
+						next: algoliaConfig.translations.nextPage
+					},
+					scrollTo: 'body'
+				})
+			);
+		}
 		
 		if (algoliaConfig.analytics.enabled === true) {
 			if (typeof algoliaAnalyticsPushFunction != 'function') {

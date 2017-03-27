@@ -1,25 +1,25 @@
 document.addEventListener("DOMContentLoaded", function (event) {
 	algoliaBundle.$(function ($) {
-		
+
 		/** We have nothing to do here if instantsearch is not enabled **/
 		if (!algoliaConfig.instant.enabled || !(algoliaConfig.isSearchPage || !algoliaConfig.autocomplete.enabled)) {
 			return;
 		}
-		
+
 		if ($(algoliaConfig.instant.selector).length <= 0) {
 			throw '[Algolia] Invalid instant-search selector: ' + algoliaConfig.instant.selector;
 		}
-		
+
 		if (algoliaConfig.autocomplete.enabled && $(algoliaConfig.instant.selector).find(algoliaConfig.autocomplete.selector).length > 0) {
 			throw '[Algolia] You can\'t have a search input matching "' + algoliaConfig.autocomplete.selector +
 			'" inside you instant selector "' + algoliaConfig.instant.selector + '"';
 		}
-		
+
 		var findAutocomplete = algoliaConfig.autocomplete.enabled && $(algoliaConfig.instant.selector).find('#algolia-autocomplete-container').length > 0;
 		if (findAutocomplete) {
 			$(algoliaConfig.instant.selector).find('#algolia-autocomplete-container').remove();
 		}
-		
+
 		/**
 		 * Setup wrapper
 		 *
@@ -28,13 +28,13 @@ document.addEventListener("DOMContentLoaded", function (event) {
 		 **/
 		var wrapperTemplate = algoliaBundle.Hogan.compile($('#instant_wrapper_template').html());
 		var instant_selector = !algoliaConfig.autocomplete.enabled ? algoliaConfig.autocomplete.selector : "#instant-search-bar";
-		
+
 		var div = document.createElement('div');
 		$(div).addClass('algolia-instant-results-wrapper');
-		
+
 		$(algoliaConfig.instant.selector).addClass('algolia-instant-replaced-content');
 		$(algoliaConfig.instant.selector).wrap(div);
-		
+
 		$('.algolia-instant-results-wrapper').append('<div class="algolia-instant-selector-results"></div>');
 		$('.algolia-instant-selector-results').html(wrapperTemplate.render({
 			second_bar: algoliaConfig.autocomplete.enabled,
@@ -42,31 +42,35 @@ document.addEventListener("DOMContentLoaded", function (event) {
 			config: algoliaConfig.instant,
 			translations: algoliaConfig.translations
 		})).show();
-		
+
 		/**
 		 * Initialise instant search
 		 * For rendering instant search page is used Algolia's instantsearch.js library
 		 * Docs: https://community.algolia.com/instantsearch.js/documentation/
 		 **/
-		
+		var trackedParameters = ['query', 'attribute:*', 'index'];
+		if (algoliaConfig.instant.infiniteScrollEnabled === false) {
+			trackedParameters.push('page');
+		}
+
 		var instantsearchOptions = {
 			appId: algoliaConfig.applicationId,
 			apiKey: algoliaConfig.instant.apiKey,
 			indexName: algoliaConfig.indexName + '_products',
 			urlSync: {
 				useHash: true,
-				trackedParameters: ['query', 'page', 'attribute:*', 'index']
+				trackedParameters: trackedParameters
 			}
 		};
-		
+
 		if (typeof algoliaHookBeforeInstantsearchInit == 'function') {
 			instantsearchOptions = algoliaHookBeforeInstantsearchInit(instantsearchOptions);
 		}
-		
+
 		var search = algoliaBundle.instantsearch(instantsearchOptions);
-		
+
 		search.client.addAlgoliaAgent('Magento integration (' + algoliaConfig.extensionVersion + ')');
-		
+
 		/**
 		 * Custom widget - this widget is used to refine results for search page or catalog page
 		 * Docs: https://community.algolia.com/instantsearch.js/documentation/#custom-widgets
@@ -82,7 +86,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 				if (algoliaConfig.request.refinementKey.length > 0) {
 					data.helper.toggleRefine(algoliaConfig.request.refinementKey, algoliaConfig.request.refinementValue);
 				}
-				
+
 				if (algoliaConfig.areCategoriesInFacets === false && algoliaConfig.request.path.length > 0) {
 					var facet = 'categories.level' + algoliaConfig.request.level;
 
@@ -103,7 +107,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 				}
 			}
 		});
-		
+
 		/**
 		 * Search box
 		 * Docs: https://community.algolia.com/instantsearch.js/documentation/#searchbox
@@ -114,7 +118,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 				placeholder: algoliaConfig.translations.searchFor
 			})
 		);
-		
+
 		/**
 		 * Stats
 		 * Docs: https://community.algolia.com/instantsearch.js/documentation/#stats
@@ -129,14 +133,14 @@ document.addEventListener("DOMContentLoaded", function (event) {
 					data.first = data.page * data.hitsPerPage + 1;
 					data.last = Math.min(data.page * data.hitsPerPage + data.hitsPerPage, data.nbHits);
 					data.seconds = data.processingTimeMS / 1000;
-					
+
 					data.translations = window.algoliaConfig.translations;
-					
+
 					return data;
 				}
 			})
 		);
-		
+
 		/**
 		 * Sorting
 		 * Docs: https://community.algolia.com/instantsearch.js/documentation/#sortbyselector
@@ -145,7 +149,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 			name: algoliaConfig.indexName + '_products',
 			label: algoliaConfig.translations.relevance
 		});
-		
+
 		search.addWidget(
 			algoliaBundle.instantsearch.widgets.sortBySelector({
 				container: '#algolia-sorts',
@@ -153,7 +157,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 				cssClass: 'form-control'
 			})
 		);
-		
+
 		/**
 		 * Products' hits
 		 * This widget renders all products into result page
@@ -197,7 +201,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 				})
 			);
 		}
-		
+
 		/**
 		 * Custom widget - Suggestions
 		 * This widget renders suggestion queries which might be interesting for your customer
@@ -216,23 +220,23 @@ document.addEventListener("DOMContentLoaded", function (event) {
 			},
 			render: function (data) {
 				var $infosContainer = $('#algolia-right-container').find('.infos');
-				
+
 				if (data.results.hits.length === 0) {
 					var content = '<div class="no-results">';
 					content += '<div><b>' + algoliaConfig.translations.noProducts + ' "' + $("<div>").text(data.results.query).html() + '</b>"</div>';
 					content += '<div class="popular-searches">';
-					
+
 					if (algoliaConfig.showSuggestionsOnNoResultsPage && this.suggestions.length > 0) {
 						content += '<div>' + algoliaConfig.translations.popularQueries + '</div>' + this.suggestions.join(', ');
 					}
-					
+
 					content += '</div>';
 					content += algoliaConfig.translations.or + ' <a href="' + algoliaConfig.baseUrl + '/catalogsearch/result/?q=__empty__">' + algoliaConfig.translations.seeAll + '</a>';
-					
+
 					content += '</div>';
-					
+
 					$('#instant-search-results-container').html(content);
-					
+
 					$infosContainer.addClass('hidden');
 				}
 				else {
@@ -240,26 +244,26 @@ document.addEventListener("DOMContentLoaded", function (event) {
 				}
 			}
 		});
-		
+
 		/** Setup attributes for current refinements widget **/
 		var attributes = [];
 		$.each(algoliaConfig.facets, function (i, facet) {
 			var name = facet.attribute;
-			
+
 			if (name === 'categories') {
 				name = 'categories.level0';
 			}
-			
+
 			if (name === 'price') {
 				name = facet.attribute + algoliaConfig.priceKey
 			}
-			
+
 			attributes.push({
 				name: name,
 				label: facet.label ? facet.label : facet.attribute
 			});
 		});
-		
+
 		/**
 		 * Widget name: Current refinements
 		 * Widget displays all filters and refinements applied on query. It also let your customer to clear them one by one
@@ -280,7 +284,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 				onlyListedAttributes: true
 			})
 		);
-		
+
 		/**
 		 * Here are specified custom attributes widgets which require special code to run properly
 		 * Custom widgets can be added to this object like [attributeName]: function(facet, templates)
@@ -292,7 +296,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 				var hierarchical_levels = [];
 				for (var l = 0; l < 10; l++)
 					hierarchical_levels.push('categories.level' + l.toString());
-				
+
 				var hierarchicalMenuParams = {
 					container: facet.wrapper.appendChild(document.createElement('div')),
 					attributes: hierarchical_levels,
@@ -306,29 +310,29 @@ document.addEventListener("DOMContentLoaded", function (event) {
 						root: 'facet hierarchical'
 					}
 				};
-				
+
 				hierarchicalMenuParams.templates.item = '' +
 					'<div class="ais-hierearchical-link-wrapper">' +
 					'<a class="{{cssClasses.link}}" href="{{url}}">{{name}}' +
 					'{{#isRefined}}<span class="cross-circle"></span>{{/isRefined}}' +
 					'<span class="{{cssClasses.count}}">{{#helpers.formatNumber}}{{count}}{{/helpers.formatNumber}}</span></a>' +
 					'</div>';
-				
+
 				return algoliaBundle.instantsearch.widgets.hierarchicalMenu(hierarchicalMenuParams);
 			}
 		};
-		
+
 		if (typeof algoliaHookAfterCustomAttributeFacetsAdd == 'function') {
 			customAttributeFacet = algoliaHookAfterCustomAttributeFacetsAdd(customAttributeFacet);
 		}
-		
+
 		/** Add all facet widgets to instatnsearch object **/
-		
+
 		window.getFacetWidget = function (facet, templates) {
-			
+
 			if (facet.type === 'priceRanges') {
 				delete templates.item;
-				
+
 				return algoliaBundle.instantsearch.widgets.priceRanges({
 					container: facet.wrapper.appendChild(document.createElement('div')),
 					attributeName: facet.attribute,
@@ -343,7 +347,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 					}
 				})
 			}
-			
+
 			if (facet.type === 'conjunctive') {
 				return algoliaBundle.instantsearch.widgets.refinementList({
 					container: facet.wrapper.appendChild(document.createElement('div')),
@@ -356,7 +360,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 					}
 				});
 			}
-			
+
 			if (facet.type === 'disjunctive') {
 				return algoliaBundle.instantsearch.widgets.refinementList({
 					container: facet.wrapper.appendChild(document.createElement('div')),
@@ -369,10 +373,10 @@ document.addEventListener("DOMContentLoaded", function (event) {
 					}
 				});
 			}
-			
+
 			if (facet.type == 'slider') {
 				delete templates.item;
-				
+
 				return algoliaBundle.instantsearch.widgets.rangeSlider({
 					container: facet.wrapper.appendChild(document.createElement('div')),
 					attributeName: facet.attribute,
@@ -388,33 +392,33 @@ document.addEventListener("DOMContentLoaded", function (event) {
 				});
 			}
 		};
-		
+
 		var facets = algoliaConfig.facets;
-		
+
 		if (typeof algoliaHookBeforeFacetWidgetsAdd == 'function') {
 			facets = algoliaHookBeforeFacetWidgetsAdd(facets);
 		}
-		
+
 		var wrapper = document.getElementById('instant-search-facets-container');
 		$.each(facets, function (i, facet) {
-			
+
 			if (facet.attribute.indexOf("price") !== -1)
 				facet.attribute = facet.attribute + algoliaConfig.priceKey;
-			
+
 			facet.wrapper = wrapper;
-			
+
 			var templates = {
 				header: '<div class="name">' + (facet.label ? facet.label : facet.attribute) + '</div>',
 				item: $('#refinements-lists-item-template').html()
 			};
-			
+
 			var widget = customAttributeFacet[facet.attribute] !== undefined ?
 				customAttributeFacet[facet.attribute](facet, templates) :
 				getFacetWidget(facet, templates);
-			
+
 			search.addWidget(widget);
 		});
-		
+
 		/**
 		 * Pagination
 		 * Docs: https://community.algolia.com/instantsearch.js/documentation/#pagination
@@ -434,25 +438,25 @@ document.addEventListener("DOMContentLoaded", function (event) {
 				})
 			);
 		}
-		
+
 		if (algoliaConfig.analytics.enabled === true) {
 			if (typeof algoliaAnalyticsPushFunction != 'function') {
 				var algoliaAnalyticsPushFunction = function (formattedParameters, state, results) {
 					var trackedUrl = '/catalogsearch/result/?q=' + state.query + '&' + formattedParameters + '&numberOfHits=' + results.nbHits;
-					
+
 					// Universal Analytics
 					if (typeof window.ga != 'undefined') {
 						window.ga('set', 'page', trackedUrl);
 						window.ga('send', 'pageView');
 					}
-					
+
 					// classic Google Analytics
 					if (typeof window._gaq !== 'undefined') {
 						window._gaq.push(['_trackPageview', trackedUrl]);
 					}
 				};
 			}
-			
+
 			search.addWidget(
 				algoliaBundle.instantsearch.widgets.analytics({
 					pushFunction: algoliaAnalyticsPushFunction,
@@ -462,45 +466,45 @@ document.addEventListener("DOMContentLoaded", function (event) {
 				})
 			);
 		}
-		
+
 		var isStarted = false;
 		function startInstantSearch() {
 			if(isStarted == true) {
 				return;
 			}
-			
+
 			if (typeof algoliaHookBeforeInstantsearchStart == 'function') {
 				search = algoliaHookBeforeInstantsearchStart(search);
 			}
-			
+
 			search.start();
-			
+
 			if (algoliaConfig.request.path.length > 0 && 'categories.level0' in search.helper.state.hierarchicalFacetsRefinements === false) {
 				search.helper.toggleRefinement('categories.level0', algoliaConfig.request.path).search();
 			}
-			
+
 			if (typeof algoliaHookAfterInstantsearchStart == 'function') {
 				search = algoliaHookAfterInstantsearchStart(search);
 			}
-			
+
 			handleInputCrossInstant($(instant_selector));
-			
+
 			var instant_search_bar = $(instant_selector);
 			if (instant_search_bar.is(":focus") === false) {
 				focusInstantSearchBar(search, instant_search_bar);
 			}
-			
+
 			if (algoliaConfig.autocomplete.enabled) {
 				$('#search_mini_form').addClass('search-page');
 			}
-			
+
 			$(document).on('click', '.ais-hierarchical-menu--link, .ais-refinement-list--checkbox', function () {
 				focusInstantSearchBar(search, instant_search_bar);
 			});
-			
+
 			isStarted = true;
 		}
-		
+
 		/** Initialise searching **/
 		startInstantSearch();
 	});
